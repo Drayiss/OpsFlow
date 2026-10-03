@@ -483,6 +483,7 @@ $RECYCLE.BIN/
 
 # Frontend build output
 frontend/dist/
+.tools/
 
 # Optional: Vite/local env files
 frontend/.env*

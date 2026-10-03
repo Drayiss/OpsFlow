@@ -4,7 +4,52 @@ OpsFlow is a multi-tenant incident management project built with React, TypeScri
 
 ## Current status
 
-The repository currently contains starter projects: a React/Vite frontend, an ASP.NET Core weather API, and a background worker that logs periodically. The features and infrastructure below are planned, not implemented. No deployment or performance results are available yet.
+The first incident workflow is implemented: select a seeded organization, choose a service, create an incident, and view the organization's latest incidents. PostgreSQL stores organizations, services, incidents, and incident events; creation records the first timeline event in the same transaction. The background worker is still a starter project.
+
+Authentication, status changes, timeline display, audit logs, real-time updates, notifications, Redis, and cloud deployment are planned. Organization-scoped queries are implemented, but there are no membership checks yet: anyone using this local demo can select either organization. No deployment or performance results are available.
+
+## Run locally
+
+Prerequisites: .NET 10 SDK, Node.js 22.12+ with npm, and Docker Desktop running.
+
+From the repository root, start PostgreSQL:
+
+```sh
+docker compose up -d --wait postgres
+```
+
+Start the API in one terminal:
+
+```sh
+dotnet run --project backend/OpsFlow.Api --launch-profile http
+```
+
+In another terminal, start the frontend:
+
+```sh
+cd frontend
+npm ci
+npm run dev
+```
+
+Open the URL printed by Vite. It proxies `/api` requests to the API at `http://localhost:5092`. In Development, API startup applies the checked-in EF Core migration and seeds Northstar and Harbor, each with one service. Create an incident, refresh to check persistence, then switch organizations to see a separate list. Lists show the latest 100 incidents.
+
+PostgreSQL uses port 5433 and a named volume so data survives container restarts. The credentials in `compose.yaml` and `appsettings.Development.json` are for local development only. To use another database, override `ConnectionStrings__OpsFlow`. Automatic startup migrations run only in Development.
+
+To stop PostgreSQL while keeping its data:
+
+```sh
+docker compose down
+```
+
+Build and check the application:
+
+```sh
+dotnet build OpsFlow.slnx
+cd frontend
+npm run build
+npm run lint
+```
 
 ## Minimum product scope
 
@@ -53,4 +98,4 @@ OpsFlow.slnx             .NET solution
 5. **Deployment:** containerize the application, deploy to Azure through GitHub Actions, and verify monitoring.
 6. **Performance:** optimize PostgreSQL queries and add Redis caching for one read endpoint. Record before/after latency using the same dataset, environment, and concurrent-user load.
 
-The first milestone is the immediate implementation target. Setup instructions will be added as the database and application workflow become runnable. Performance claims will use measured results rather than estimated percentages.
+The next part of the first milestone is status changes, timeline display, and audit records. Performance claims will use measured results rather than estimated percentages.
