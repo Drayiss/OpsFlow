@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/backend/">
+    <Project Path="backend/OpsFlow.Api/OpsFlow.Api.csproj" />
+    <Project Path="backend/OpsFlow.Worker/OpsFlow.Worker.csproj" />
+  </Folder>
+</Solution>
