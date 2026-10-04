@@ -4,15 +4,35 @@ OpsFlow is a multi-tenant incident management project built with React, TypeScri
 
 ## Current status
 
-The first incident workflow is implemented: select a seeded organization, choose a service, create an incident, and view the organization's latest incidents. PostgreSQL stores organizations, services, incidents, and incident events; creation records the first timeline event in the same transaction. The background worker is still a starter project.
+The core incident workflow is implemented: select a seeded organization, choose a service, create an incident, view its details, and change its status between Open, Investigating, and Resolved. The details view shows a timestamped timeline of creation and status changes. PostgreSQL stores organizations, services, incidents, and incident events; incident creation and status changes each save their timeline event in the same transaction. Status updates reject stale requests with a conflict response, and selecting the current status does not add another event.
 
-Authentication, status changes, timeline display, audit logs, real-time updates, notifications, Redis, and cloud deployment are planned. Organization-scoped queries are implemented, but there are no membership checks yet: anyone using this local demo can select either organization. No deployment or performance results are available.
+The frontend uses TanStack Query for organization-scoped caching and refreshes, React Suspense for initial loading, and react-error-boundary for failed initial loads with retry support. The background worker is still a starter project.
+
+Authentication, timeline notes, audit logs, real-time updates, notifications, Redis, and cloud deployment are planned. Organization-scoped queries are implemented, but there are no membership checks yet: anyone using this local demo can select either organization. No deployment or performance results are available.
+
+Known consistency limitations: the details endpoint reads the incident and timeline separately, so concurrent status updates can produce a response containing an older status and a newer timeline. After a rejected status update, the frontend refreshes the details but not the incident list, which can temporarily leave the two views showing different statuses. Consistent snapshot reads and list invalidation on failed updates remain to be added.
 
 ## Run locally
 
 Prerequisites: .NET 10 SDK, Node.js 22.12+ with npm, and Docker Desktop running.
 
-From the repository root, start PostgreSQL:
+From the repository root, install frontend dependencies once:
+
+```sh
+npm run setup
+```
+
+For everyday development, start PostgreSQL, the API, and the frontend together:
+
+```sh
+npm start
+```
+
+Open `http://localhost:5173`. Press **Ctrl+C** in that terminal to stop both the API and frontend. PostgreSQL stays running and retains its data. The launcher refuses to start if an existing API or frontend is already using ports 5092 or 5173; stop that instance first. Run `npm run setup` again when frontend dependencies change, with the frontend stopped.
+
+### Start each service separately
+
+Alternatively, from the repository root, start PostgreSQL:
 
 ```sh
 docker compose up -d --wait postgres
@@ -32,7 +52,15 @@ npm ci
 npm run dev
 ```
 
-Open the URL printed by Vite. It proxies `/api` requests to the API at `http://localhost:5092`. In Development, API startup applies the checked-in EF Core migration and seeds Northstar and Harbor, each with one service. Create an incident, refresh to check persistence, then switch organizations to see a separate list. Lists show the latest 100 incidents.
+Open the URL printed by Vite. It proxies `/api` requests to the API at `http://localhost:5092`. In Development, API startup applies the checked-in EF Core migration and seeds Northstar and Harbor, each with one service. Lists show the latest 100 incidents.
+
+To try the workflow:
+
+1. Select an organization and create an incident for its service.
+2. Click **View details** and check the creation event in the timeline.
+3. Select **Investigating**, then **Resolved**. Each change updates the list and adds a timeline event.
+4. Refresh and reopen the details to check persistence.
+5. Switch organizations to see a separate incident list; the selected details panel resets.
 
 PostgreSQL uses port 5433 and a named volume so data survives container restarts. The credentials in `compose.yaml` and `appsettings.Development.json` are for local development only. To use another database, override `ConnectionStrings__OpsFlow`. Automatic startup migrations run only in Development.
 
@@ -69,7 +97,7 @@ The initial UI will contain login, an incident list, incident details, services,
 
 | Component | Responsibility |
 | --- | --- |
-| React + TypeScript | Incident forms, lists, and organization selection |
+| React + TypeScript + TanStack Query | Incident forms, lists, details, timelines, and organization-scoped query caching |
 | ASP.NET Core API | Incident operations, authorization, tenant scoping, and SignalR updates |
 | PostgreSQL | Shared database with organization-scoped application data |
 | Redis | Cache one organization-scoped read endpoint with invalidation on changes |
@@ -86,6 +114,9 @@ Authentication will use an external OAuth/OIDC identity provider. The API will v
 frontend/                 React + TypeScript application
 backend/OpsFlow.Api/      ASP.NET Core API
 backend/OpsFlow.Worker/   Background notification worker
+scripts/dev.mjs           Combined local development launcher
+compose.yaml              Local PostgreSQL service
+package.json              Root startup and setup commands
 OpsFlow.slnx             .NET solution
 ```
 
@@ -98,4 +129,4 @@ OpsFlow.slnx             .NET solution
 5. **Deployment:** containerize the application, deploy to Azure through GitHub Actions, and verify monitoring.
 6. **Performance:** optimize PostgreSQL queries and add Redis caching for one read endpoint. Record before/after latency using the same dataset, environment, and concurrent-user load.
 
-The next part of the first milestone is status changes, timeline display, and audit records. Performance claims will use measured results rather than estimated percentages.
+The next part of the first milestone is fixing the known consistency limitations, then adding timeline notes and audit records. Performance claims will use measured results rather than estimated percentages.
