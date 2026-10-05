@@ -168,6 +168,12 @@ app.MapGet(
     "/api/organizations/{organizationId:guid}/incidents/{incidentId:guid}",
     async (Guid organizationId, Guid incidentId, OpsFlowDbContext db, CancellationToken ct) =>
     {
+        // Keep the incident and timeline on the same committed snapshot.
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.RepeatableRead,
+            ct
+        );
+
         var incident = await db
             .Incidents.AsNoTracking()
             .Where(x => x.OrganizationId == organizationId && x.Id == incidentId)
@@ -203,6 +209,8 @@ app.MapGet(
                 x.CreatedAt,
             })
             .ToListAsync(ct);
+
+        await transaction.CommitAsync(ct);
 
         return Results.Ok(
             new

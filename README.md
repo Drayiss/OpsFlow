@@ -10,7 +10,7 @@ The frontend uses TanStack Query for organization-scoped caching and refreshes, 
 
 Authentication, timeline notes, audit logs, real-time updates, notifications, Redis, and cloud deployment are planned. Organization-scoped queries are implemented, but there are no membership checks yet: anyone using this local demo can select either organization. No deployment or performance results are available.
 
-Known consistency limitations: the details endpoint reads the incident and timeline separately, so concurrent status updates can produce a response containing an older status and a newer timeline. After a rejected status update, the frontend refreshes the details but not the incident list, which can temporarily leave the two views showing different statuses. Consistent snapshot reads and list invalidation on failed updates remain to be added.
+The details endpoint reads the incident and timeline within a Repeatable Read transaction, keeping both queries on the same committed database snapshot during concurrent updates. After successful or failed status updates, the frontend refreshes both the details and the organization's incident list.
 
 ## Run locally
 
@@ -129,4 +129,4 @@ OpsFlow.slnx             .NET solution
 5. **Deployment:** containerize the application, deploy to Azure through GitHub Actions, and verify monitoring.
 6. **Performance:** optimize PostgreSQL queries and add Redis caching for one read endpoint. Record before/after latency using the same dataset, environment, and concurrent-user load.
 
-The next part of the first milestone is fixing the known consistency limitations, then adding timeline notes and audit records. Performance claims will use measured results rather than estimated percentages.
+The next part of the first milestone is adding timeline notes and audit records. Performance claims will use measured results rather than estimated percentages.

@@ -126,12 +126,18 @@ function IncidentDetails({
       ]);
     },
 
-    // Reload details after a failure so conflicts show the latest status.
+    // Refresh both views after a failure so conflicts show the latest status.
     onError: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: detailKey,
-        exact: true,
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: detailKey,
+          exact: true,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["incidents", organizationId],
+          exact: true,
+        }),
+      ]);
     },
   });
 
